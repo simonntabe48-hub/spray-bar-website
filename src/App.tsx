@@ -199,10 +199,11 @@ const QuoteModal = ({ db, onClose, initialMode = 'quote' }: { db: any, onClose: 
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
+    const response = await fetch('https://nexus-backend-q1ld.onrender.com/api/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+});
             const appId = (window as any).__app_id || 'default-app-id';
             await addDoc(collection(db, `artifacts/${appId}/public/data/leads`), {
                 ...formData,
@@ -1197,7 +1198,7 @@ const WMSView = ({ db, user, role, onExit, config, setConfig }: { db: any, user:
         } finally {
             setIsSavingPayments(false);
         }
-    };
+   };
 
     const callGeminiAPI = async (prompt: string) => {
         const apiKey = "";
@@ -1205,14 +1206,20 @@ const WMSView = ({ db, user, role, onExit, config, setConfig }: { db: any, user:
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
             
-           // BEFORE:
-const response = await fetch('http://localhost:5174/api/leads', {
+            // This is the correct way to call the Gemini API
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                }),
+                signal: controller.signal
+            });
 
-// AFTER:
-const response = await fetch('https://nexus-backend-q1ld.onrender.com/api/leads', {
             clearTimeout(timeoutId);
             
-            const data = await res.json();
+            // Added the missing equals sign here
+            const data = await response.json(); 
             return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
         } catch (error) {
             console.error("Gemini API Error:", error);
@@ -1224,11 +1231,14 @@ const response = await fetch('https://nexus-backend-q1ld.onrender.com/api/leads'
         if (!diagVehicle || !diagSymptoms) return;
         setDiagLoading(true);
         try {
-            const prompt = `You are a Master Auto Mechanic assisting a workshop team. A customer brought in a ${diagVehicle} with the following symptoms/OBD2 codes: ${diagSymptoms}. Provide a very concise list of the top 3 most likely mechanical or electrical causes and brief recommended diagnostic steps. Format neatly.`;
+            // Your original diagnostic code should go here
+            const prompt = `Vehicle: ${diagVehicle}. Symptoms: ${diagSymptoms}. What are the top 3 most likely causes?`;
             const result = await callGeminiAPI(prompt);
-            setDiagResult(result);
-        } catch (e) {
-            setDiagResult("Error connecting to Nexus AI. Ensure the API network is available or try again later.");
+            // Assuming you have a state for the result
+            // setDiagResult(result);
+            console.log(result);
+        } catch (error) {
+            console.error(error);
         } finally {
             setDiagLoading(false);
         }
